@@ -127,12 +127,44 @@ export async function close_browser() {
 }
 
 // ─── Utility: get_page_content ──────────────────────────────────────────────
-// Returns the full HTML of the current page as a string.
-// The agent can use this to find element selectors without needing a screenshot.
+// Extracts only form-related elements from the page, keeping the output small
+// enough to fit within the LLM context window. Full page HTML for modern
+// React sites can easily exceed 1M+ characters.
 
 export async function get_page_content() {
   if (!page) throw new Error("Browser is not open. Call open_browser first.");
-  const content = await page.content();
-  console.log(`[get_page_content] Retrieved page HTML (${content.length} chars)`);
-  return { success: true, content, message: "Page content retrieved." };
+
+  // Extract only interactive/form elements and their attributes
+  const elements = await page.evaluate(() => {
+    const selectors = [
+      "input", "textarea", "select", "button",
+      "form", "label", "[role='textbox']", "[contenteditable='true']",
+    ];
+    const results = [];
+    for (const sel of selectors) {
+      document.querySelectorAll(sel).forEach((el) => {
+        const attrs = {};
+        for (const attr of el.attributes) {
+          attrs[attr.name] = attr.value;
+        }
+        results.push({
+          tag: el.tagName.toLowerCase(),
+          attrs,
+          text: el.textContent?.slice(0, 100) || "",
+          outerHTML: el.outerHTML.slice(0, 300),
+        });
+      });
+    }
+    return results;
+  });
+
+  const content = JSON.stringify(elements, null, 2);
+  // Safety truncation to ~8K chars (~2K tokens) to stay within token limits
+  const MAX_CHARS = 8000;
+  const truncated = content.length > MAX_CHARS
+    ? content.slice(0, MAX_CHARS) + "\n... (truncated)"
+    : content;
+
+  console.log(`[get_page_content] Extracted ${elements.length} form elements (${truncated.length} chars)`);
+  return { success: true, content: truncated, message: `Found ${elements.length} interactive elements on the page.` };
 }
