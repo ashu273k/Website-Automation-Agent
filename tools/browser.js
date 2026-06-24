@@ -23,7 +23,11 @@ async function screenshotOnError(toolName) {
   }
 }
 
-// ─── Tool 1: open_browser ─────────────────────────────────────────────────
+/**
+ * Launches a Chromium browser instance with a 1280x720 viewport.
+ * Must be called before any other browser tool.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function open_browser() {
   try {
     browser = await chromium.launch({ headless: false });
@@ -39,7 +43,11 @@ export async function open_browser() {
   }
 }
 
-// ─── Tool 2: navigate_to_url ──────────────────────────────────────────────
+/**
+ * Navigates the browser to the specified URL.
+ * @param {string} url - Full URL including https://
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function navigate_to_url(url) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -53,7 +61,11 @@ export async function navigate_to_url(url) {
   }
 }
 
-// ─── Tool 3: take_screenshot ──────────────────────────────────────────────
+/**
+ * Captures a PNG screenshot of the current browser viewport.
+ * @param {string|null} filename - Optional filename. Defaults to timestamp.
+ * @returns {Promise<{success: boolean, path: string, message: string}>}
+ */
 export async function take_screenshot(filename = null) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -75,7 +87,12 @@ export async function take_screenshot(filename = null) {
   }
 }
 
-// ─── Tool 4: click_on_screen ──────────────────────────────────────────────
+/**
+ * Clicks on a specific point on the screen.
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function click_on_screen(x, y) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -90,7 +107,12 @@ export async function click_on_screen(x, y) {
   }
 }
 
-// ─── Tool 5: send_keys ────────────────────────────────────────────────────
+/**
+ * Sends text to a specific input field.
+ * @param {string} selector - CSS selector for the input field
+ * @param {string} text - Text to type
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function send_keys(selector, text) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -112,6 +134,13 @@ export async function send_keys(selector, text) {
 }
 
 // ─── Tool 6: scroll ───────────────────────────────────────────────────────
+
+/**
+ * Scrolls the browser window in the specified direction.
+ * @param {string} direction - "down" or "up"
+ * @param {number} amount - Pixels to scroll
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function scroll(direction = "down", amount = 400) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -127,7 +156,12 @@ export async function scroll(direction = "down", amount = 400) {
   }
 }
 
-// ─── Tool 7: double_click ─────────────────────────────────────────────────
+/**
+ * Double-clicks on a specific point on the screen.
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function double_click(x, y) {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
@@ -142,7 +176,10 @@ export async function double_click(x, y) {
   }
 }
 
-// ─── Utility: close_browser ───────────────────────────────────────────────
+/**
+ * Closes the browser instance.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 export async function close_browser() {
   try {
     if (browser) {
@@ -163,6 +200,10 @@ export async function close_browser() {
 // enough to fit within the LLM context window. Full page HTML for modern
 // React sites can easily exceed 1M+ characters.
 
+/**
+ * Extracts the HTML content of the current page, focusing on form-related elements.
+ * @returns {Promise<{success: boolean, content: string, message: string}>}
+ */
 export async function get_page_content() {
   try {
     if (!page) throw new Error("Browser is not open. Call open_browser first.");
