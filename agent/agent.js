@@ -340,3 +340,25 @@ Rules:
     logger.info("agent", "Log file", { path: logger.getLogFile() });
   }
 }
+
+// ─── Retry wrapper ─────────────────────────────────────────────────────────
+// Runs the agent and retries once if it throws an unhandled error.
+// This handles transient failures like network timeouts or page load issues.
+
+export async function runAgentWithRetry(task, maxRetries = 2) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logger.info("retry", `Attempt ${attempt} of ${maxRetries}`);
+      await runAgent(task);
+      return; // success — exit
+    } catch (error) {
+      logger.error("retry", `Attempt ${attempt} failed: ${error.message}`);
+      if (attempt === maxRetries) {
+        logger.error("retry", "All attempts exhausted. Giving up.");
+        throw error;
+      }
+      logger.warn("retry", `Waiting 3 seconds before retry...`);
+      await new Promise((res) => setTimeout(res, 3000));
+    }
+  }
+}
