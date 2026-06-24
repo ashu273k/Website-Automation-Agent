@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import fs from "fs";
 import "dotenv/config";
+import { logger } from "../utils/logger.js";
 
 import {
   open_browser,
@@ -141,8 +142,8 @@ const TOOL_DEFINITIONS = [
 // When GPT-4o says "call send_keys", this runs the real send_keys().
 
 async function dispatch_tool(tool_name, tool_args) {
-  console.log(`\n[agent] Executing tool: ${tool_name}`);
-  console.log(`[agent] Arguments:`, JSON.stringify(tool_args, null, 2));
+  logger.tool(tool_name, "Executing tool");
+  logger.tool(tool_name, "Arguments", tool_args);
 
   switch (tool_name) {
     case "open_browser":       return await open_browser();
@@ -176,10 +177,8 @@ function screenshot_to_base64(filepath) {
 //   5. Has a max_iterations guard to prevent infinite loops
 
 export async function runAgent(task) {
-  console.log("\n========================================");
-  console.log("[agent] Starting agent run");
-  console.log(`[agent] Task: ${task}`);
-  console.log("========================================\n");
+  logger.separator("AGENT RUN STARTED");
+  logger.info("runAgent", "Task received", { task });
 
   // System prompt — tells GPT-4o how to behave as a browser agent
   const system_prompt = `You are a browser automation agent. Complete web tasks step by step using the provided tools.
@@ -225,7 +224,7 @@ Rules:
   try {
     while (iteration < MAX_ITERATIONS) {
       iteration++;
-      console.log(`\n[agent] ── Iteration ${iteration} ──`);
+      logger.agent("iteration", `── Iteration ${iteration} ──`);
 
       // Trim old screenshots to keep token usage low
       trimOldScreenshots();
@@ -244,15 +243,15 @@ Rules:
           max_tokens: 1000,
         });
       } catch (apiError) {
-        console.error(`[agent] API error: ${apiError.message}`);
+        logger.error("agent", `API error: ${apiError.message}`);
         // Stop on payment/auth errors — retrying won't help
         if (apiError.status === 402 || apiError.status === 401) {
-          console.error("[agent] Account limit or auth error. Stopping.");
+          logger.error("agent", "Account limit or auth error. Stopping.");
           break;
         }
         // If context is too long, try removing the last large message
         if (apiError.status === 400 && messages.length > 1) {
-          console.log("[agent] Trimming last message to reduce context size...");
+          logger.warn("agent", "Trimming last message to reduce context size...");
           messages.pop();
         }
         continue;
@@ -264,14 +263,14 @@ Rules:
       // Add GPT-4o's response to conversation history
       messages.push(response_message);
 
-      console.log(`[agent] Finish reason: ${finish_reason}`);
+      logger.agent("agent", `Finish reason: ${finish_reason}`);
       if (response_message.content) {
-        console.log(`[agent] GPT-4o says: ${response_message.content}`);
+        logger.agent("agent", `GPT-4o says: ${response_message.content}`);
       }
 
       // ── Stop condition: GPT-4o is done, no more tools to call ──
       if (finish_reason === "stop" || !response_message.tool_calls) {
-        console.log("\n[agent] Agent finished. No more tool calls.");
+        logger.agent("agent", "Agent finished. No more tool calls.");
         break;
       }
 
@@ -312,7 +311,7 @@ Rules:
         } catch (error) {
           // If a tool fails, report the error back to GPT-4o
           // so it can try a different approach
-          console.error(`[agent] Tool error in ${tool_name}:`, error.message);
+          logger.error("agent", `Tool error in ${tool_name}: ${error.message}`);
           tool_result = { success: false, error: error.message };
         }
 
@@ -331,12 +330,13 @@ Rules:
     }
 
     if (iteration >= MAX_ITERATIONS) {
-      console.log("\n[agent] Max iterations reached. Stopping.");
+      logger.warn("agent", "Max iterations reached. Stopping.");
     }
 
   } finally {
     // Always close the browser, even if an error occurred
     await close_browser();
-    console.log("\n[agent] Agent run complete.");
+    logger.agent("agent", "Agent run complete.");
+    logger.info("agent", "Log file", { path: logger.getLogFile() });
   }
 }

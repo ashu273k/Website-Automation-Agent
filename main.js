@@ -1,4 +1,5 @@
 import { runAgent } from "./agent/agent.js";
+import { logger } from "./utils/logger.js";
 
 const task = `
 Go to https://ui.shadcn.com/docs/forms/react-hook-form
@@ -15,4 +16,14 @@ Your job:
 5. Take a screenshot to confirm both fields are filled
 `;
 
-await runAgent(task);
+logger.info("main", "Starting automation agent...");
+logger.info("main", "Log file", { path: logger.getLogFile() });
+
+try {
+  await runAgent(task);
+} catch (err) {
+  logger.error("main", "Agent failed", { error: err.message });
+  process.exit(1);
+}
+
+logger.separator("RUN FINISHED");
